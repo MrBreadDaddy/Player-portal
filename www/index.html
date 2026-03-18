@@ -3110,7 +3110,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (!container) return;
                 container.innerHTML = '<p style="color:#555;padding:16px;text-align:center">Rendering PDF...</p>';
                 try {
-                    const data = pdfData instanceof ArrayBuffer ? new Uint8Array(pdfData) : new Uint8Array(pdfData);
+                    const buf = pdfData instanceof ArrayBuffer ? pdfData.slice(0) : pdfData.buffer ? pdfData.buffer.slice(0) : new Uint8Array(pdfData).buffer.slice(0);
+                    const data = new Uint8Array(buf);
                     const pdf = await pdfjsLib.getDocument({ data }).promise;
                     container.innerHTML = '';
                     const width = container.clientWidth || 360;
