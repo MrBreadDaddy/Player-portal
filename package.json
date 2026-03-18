@@ -1,0 +1,15 @@
+{
+  "name": "player-portal",
+  "version": "1.0.0",
+  "description": "Dungeon Dash Player Portal",
+  "main": "index.js",
+  "scripts": {
+    "build:android": "npx cap sync android && npx cap build android",
+    "open:android": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0"
+  }
+}
