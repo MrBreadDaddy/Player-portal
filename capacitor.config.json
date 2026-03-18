@@ -3,6 +3,9 @@
   "appName": "Player Portal",
   "webDir": "www",
   "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "http"
+  },
   "android": {
     "allowMixedContent": true
   }
