@@ -778,7 +778,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 </div>
                 
                 <div class="pdf-embed-box">
-                    <iframe id="charPdfEmbed" class="pdf-embed-frame" type="application/pdf"></iframe>
+                    <div id="charPdfEmbed" class="pdf-embed-frame" style="overflow-y:auto;background:#fff;"></div>
                     <div class="pdf-embed-overlay"></div>
                 </div>
                 
@@ -1799,7 +1799,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 </button>
             </div>
             <div class="pdf-embed-container" id="pdfEmbedContainer">
-                <iframe id="pdfEmbed" class="pdf-embed" type="application/pdf"></iframe>
+                <div id="pdfEmbed" class="pdf-embed" style="overflow-y:auto;background:#fff;"></div>
                 <div class="pdf-overlay"></div>
             </div>
         </div>
@@ -1820,7 +1820,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 Complete this form to accept the delivery quest. Download, fill out, and upload signed forms in your Profile.
             </div>
             <div class="pdf-embed-container" id="employmentFormContainer">
-                <iframe id="employmentFormEmbed" class="pdf-embed" type="application/pdf"></iframe>
+                <div id="employmentFormEmbed" class="pdf-embed" style="overflow-y:auto;background:#fff;"></div>
                 <div class="pdf-overlay"></div>
             </div>
             <button onclick="app.acceptQuestWithForm()" class="w-full mt-3 py-2 bg-green-600 rounded-lg text-white hover:bg-green-700 transition">
@@ -2826,17 +2826,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 
                 // Load PDF into embedded viewer
                 if (this.state.characterPdf) {
-                    const iframe = document.getElementById('charPdfEmbed');
-                    iframe.classList.remove('loaded');
-                    
-                    const blob = new Blob([this.state.characterPdf], { type: 'application/pdf' });
-                    const url = URL.createObjectURL(blob);
-                    iframe.src = url;
-                    
-                    // Show when loaded
-                    iframe.onload = () => {
-                        iframe.classList.add('loaded');
-                    };
+                    this.renderPdfPages(this.state.characterPdf, 'charPdfEmbed');;
                 }
                 
                 // Load profile data into form
@@ -3039,8 +3029,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 this.saveState();
                 
                 // Clear iframes
-                document.getElementById('charPdfEmbed').src = '';
-                document.getElementById('pdfEmbed').src = '';
+                document.getElementById('charPdfEmbed').innerHTML = '';
+                document.getElementById('pdfEmbed').innerHTML = '';
                 
                 this.showNoCharacter();
                 this.showToast('Character data cleared. Upload a new PDF to start over.', 'info');
@@ -3058,11 +3048,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 
                 try {
                     // Create blob URL from the PDF data
-                    const blob = new Blob([this.state.characterPdf], { type: 'application/pdf' });
-                    const url = URL.createObjectURL(blob);
-                    
-                    document.getElementById('pdfEmbed').src = url;
-                    document.getElementById('pdfModal').classList.add('active');
+                    const blob = document.getElementById('pdfModal').classList.add('active');
+                    this.renderPdfPages(this.state.characterPdf, 'pdfEmbed');
                     
                 } catch (err) {
                     this.showToast('Error loading PDF: ' + err.message, 'error');
@@ -3071,9 +3058,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             closePdfViewer() {
                 document.getElementById('pdfModal').classList.remove('active');
-                // Clear the iframe to free memory
                 setTimeout(() => {
-                    document.getElementById('pdfEmbed').src = '';
+                    document.getElementById('pdfEmbed').innerHTML = '';
                 }, 300);
             },
 
@@ -3091,10 +3077,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 }
                 
                 try {
-                    const blob = new Blob([form.pdfData], { type: 'application/pdf' });
-                    const url = URL.createObjectURL(blob);
-                    
-                    document.getElementById('employmentFormEmbed').src = url;
+                    const blob = document.getElementById('employmentFormEmbed').innerHTML = '';
+                    document.getElementById('employmentFormModal').classList.add('active');
+                    this.renderPdfPages(form.pdfData, 'employmentFormEmbed');
                     document.getElementById('employmentFormModal').classList.add('active');
                     
                     // Store which quest is being accepted
@@ -3108,7 +3093,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 document.getElementById('employmentFormModal').classList.remove('active');
                 this.state.currentFormQuest = null;
                 setTimeout(() => {
-                    document.getElementById('employmentFormEmbed').src = '';
+                    document.getElementById('employmentFormEmbed').innerHTML = '';
                 }, 300);
             },
 
@@ -3117,6 +3102,32 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 
                 this.closeEmploymentForm();
                 this.acceptQuest(this.state.currentFormQuest);
+            },
+
+
+            async renderPdfPages(pdfData, containerId) {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                container.innerHTML = '<p style="color:#555;padding:16px;text-align:center">Rendering PDF...</p>';
+                try {
+                    const data = pdfData instanceof ArrayBuffer ? new Uint8Array(pdfData) : new Uint8Array(pdfData);
+                    const pdf = await pdfjsLib.getDocument({ data }).promise;
+                    container.innerHTML = '';
+                    const width = container.clientWidth || 360;
+                    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                        const page = await pdf.getPage(pageNum);
+                        const viewport = page.getViewport({ scale: width / page.getViewport({ scale: 1 }).width });
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        canvas.style.cssText = 'width:100%;display:block;margin-bottom:4px;';
+                        container.appendChild(canvas);
+                        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                    }
+                    pdf.destroy();
+                } catch (err) {
+                    container.innerHTML = '<p style="color:red;padding:16px">PDF render error: ' + err.message + '</p>';
+                }
             },
 
             async parsePdf(file) {
