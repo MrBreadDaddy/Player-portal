@@ -3045,15 +3045,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     this.showToast('No PDF loaded', 'error');
                     return;
                 }
-                
-                try {
-                    // Create blob URL from the PDF data
-                    const blob = document.getElementById('pdfModal').classList.add('active');
-                    this.renderPdfPages(this.state.characterPdf, 'pdfEmbed');
-                    
-                } catch (err) {
-                    this.showToast('Error loading PDF: ' + err.message, 'error');
-                }
+                this.openNativePdf(this.state.characterPdf, 'character_sheet.pdf');
             },
 
             closePdfViewer() {
@@ -3069,24 +3061,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     this.showToast('No employment form for this quest', 'error');
                     return;
                 }
-                
                 const form = this.state.employmentForms.find(f => f.id === quest.employmentFormId);
                 if (!form) {
                     this.showToast('Employment form not found', 'error');
                     return;
                 }
-                
-                try {
-                    const blob = document.getElementById('employmentFormEmbed').innerHTML = '';
-                    document.getElementById('employmentFormModal').classList.add('active');
-                    this.renderPdfPages(form.pdfData, 'employmentFormEmbed');
-                    document.getElementById('employmentFormModal').classList.add('active');
-                    
-                    // Store which quest is being accepted
-                    this.state.currentFormQuest = questId;
-                } catch (err) {
-                    this.showToast('Error loading form: ' + err.message, 'error');
-                }
+                this.openNativePdf(form.pdfData, 'employment_form.pdf');
             },
 
             closeEmploymentForm() {
@@ -3105,43 +3085,41 @@ Check your Browserslist config to be sure that your targets are set up correctly
             },
 
 
-            async renderPdfPages(pdfData, containerId) {
+            async openNativePdf(pdfData, filename) {
+                try {
+                    const { Filesystem } = Capacitor.Plugins;
+                    const { FileOpener } = Capacitor.Plugins;
+
+                    // Convert to base64
+                    const buf = pdfData instanceof ArrayBuffer ? pdfData : pdfData.buffer || pdfData;
+                    const bytes = new Uint8Array(buf instanceof ArrayBuffer ? buf : buf.slice(0));
+                    let binary = '';
+                    bytes.forEach(b => binary += String.fromCharCode(b));
+                    const base64 = btoa(binary);
+
+                    // Write to cache dir
+                    const result = await Filesystem.writeFile({
+                        path: filename || 'character_sheet.pdf',
+                        data: base64,
+                        directory: 'CACHE',
+                        recursive: true
+                    });
+
+                    // Open with native PDF viewer
+                    await FileOpener.openWith({
+                        filePath: result.uri,
+                        contentType: 'application/pdf'
+                    });
+                } catch (err) {
+                    this.showToast('Could not open PDF: ' + err.message, 'error');
+                }
+            },
+
+            renderPdfPages(pdfData, containerId) {
                 const container = document.getElementById(containerId);
                 if (!container) return;
-                container.innerHTML = '<p style="color:#aaa;padding:16px;text-align:center">Loading PDF...</p>';
-                container.classList.remove('loaded');
-                try {
-                    const buf = (pdfData instanceof ArrayBuffer ? pdfData : pdfData.buffer || pdfData).slice ? 
-                        (pdfData instanceof ArrayBuffer ? pdfData : pdfData.buffer).slice(0) : 
-                        new Uint8Array(pdfData).buffer;
-                    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
-                    container.innerHTML = '';
-                    container.style.cssText += 'overflow-y:auto;';
-
-                    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                        const page = await pdf.getPage(pageNum);
-                        const scale = 2.0;
-                        const viewport = page.getViewport({ scale });
-
-                        // Render page to offscreen canvas
-                        const canvas = document.createElement('canvas');
-                        canvas.width = viewport.width;
-                        canvas.height = viewport.height;
-                        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-
-                        // Convert canvas to image and display
-                        const img = document.createElement('img');
-                        img.src = canvas.toDataURL('image/jpeg', 0.85);
-                        img.style.cssText = 'width:100%;display:block;margin-bottom:2px;';
-                        container.appendChild(img);
-                    }
-
-                    pdf.destroy();
-                    container.classList.add('loaded');
-                } catch (err) {
-                    container.innerHTML = '<p style="color:red;padding:16px;text-align:center">Error: ' + err.message + '</p>';
-                    container.classList.add('loaded');
-                }
+                container.innerHTML = '<p style="color:#aaa;padding:16px;text-align:center;cursor:pointer" onclick="app.openNativePdf(app.state.characterPdf, 'character_sheet.pdf')">Tap to open PDF</p>';
+                container.classList.add('loaded');
             },
 
             async parsePdf(file) {
