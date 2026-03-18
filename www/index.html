@@ -2826,7 +2826,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 
                 // Load PDF into embedded viewer
                 if (this.state.characterPdf) {
-                    this.renderPdfPages(this.state.characterPdf, 'charPdfEmbed');;
+                    requestAnimationFrame(() => this.renderPdfPages(this.state.characterPdf, 'charPdfEmbed'));
                 }
                 
                 // Load profile data into form
