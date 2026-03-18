@@ -3126,8 +3126,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
                     }
                     pdf.destroy();
+                    container.classList.add('loaded');
                 } catch (err) {
                     container.innerHTML = '<p style="color:red;padding:16px">PDF render error: ' + err.message + '</p>';
+                    container.classList.add('loaded');
                 }
             },
 
